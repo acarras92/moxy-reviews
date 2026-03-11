@@ -1,0 +1,7 @@
+node_modules/
+*.js
+*.json
+*.csv
+*.env
+.env*
+ta_debug.png

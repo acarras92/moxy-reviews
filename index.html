@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Moxy New Orleans — Guest Sentiment Report</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --navy:   #0f172a;
+      --slate:  #1e293b;
+      --text:   #1e293b;
+      --muted:  #64748b;
+      --bg:     #f1f5f9;
+      --card:   #ffffff;
+      --border: #e2e8f0;
+      --blue:   #2563eb;
+      --orange: #f97316;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+           background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+
+    /* ── Header ─────────────────────────────────── */
+    .hdr { background: var(--navy); color: #fff; padding: 1.75rem 2.5rem; }
+    .hdr-inner { max-width: 1160px; margin: 0 auto; display: flex;
+                 justify-content: space-between; align-items: flex-end; gap: 1rem; flex-wrap: wrap; }
+    .hdr-tag  { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em;
+                text-transform: uppercase; color: #475569; margin-bottom: 0.35rem; }
+    .hdr h1   { font-size: 1.65rem; font-weight: 800; letter-spacing: -0.02em; }
+    .hdr-sub  { color: #94a3b8; font-size: 0.78rem; margin-top: 0.25rem; }
+    .hdr-meta { text-align: right; font-size: 0.72rem; color: #94a3b8; line-height: 1.9; }
+    .hdr-meta strong { color: #cbd5e1; }
+
+    /* ── Layout ──────────────────────────────────── */
+    .main { max-width: 1160px; margin: 0 auto; padding: 2rem 2.5rem; }
+
+    .sec { font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
+           letter-spacing: 0.1em; color: var(--muted); border-bottom: 1px solid var(--border);
+           padding-bottom: 0.45rem; margin-bottom: 1.25rem; margin-top: 2rem; }
+    .sec:first-of-type { margin-top: 0; }
+
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; }
+
+    /* ── Overview row ───────────────────────────── */
+    .overview { display: grid; grid-template-columns: auto 1fr; gap: 1.5rem; align-items: start; }
+
+    /* Health card */
+    .hcard { display: flex; gap: 1.75rem; align-items: center; padding: 1.5rem 1.75rem;
+             border-left: 4px solid #ea580c; min-width: 330px; }
+    .hcard-detail { flex: 1; min-width: 0; }
+    .hgrade  { font-size: 1.45rem; font-weight: 800; color: #ea580c; line-height: 1.1; }
+    .hsub    { font-size: 0.7rem; color: var(--muted); margin-top: 0.15rem; margin-bottom: 1rem; }
+    .cmp     { margin-bottom: 0.55rem; }
+    .cmp-row { font-size: 0.68rem; color: var(--muted); display: flex;
+               justify-content: space-between; margin-bottom: 0.2rem; }
+    .cmp-track { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .cmp-fill  { height: 100%; border-radius: 3px; }
+
+    /* KPI grid */
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+    .kpi { padding: 1.25rem 1.4rem; }
+    .kv  { font-size: 1.85rem; font-weight: 800; line-height: 1; }
+    .kl  { font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.07em;
+           color: var(--muted); margin-top: 0.3rem; }
+    .ks  { font-size: 0.7rem; color: var(--muted); margin-top: 0.15rem; }
+
+    /* ── Platform breakdown ─────────────────────── */
+    .plat-row { display: flex; align-items: center; gap: 1rem; padding: 0.6rem 1.5rem;
+                border-bottom: 1px solid var(--border); }
+    .plat-row:last-child { border-bottom: none; }
+    .plat-name  { font-size: 0.82rem; font-weight: 600; width: 110px; }
+    .plat-bar   { flex: 1; height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+    .plat-fill  { height: 100%; border-radius: 4px; }
+    .plat-count { font-size: 0.75rem; color: var(--muted); width: 110px; text-align: right; }
+
+    /* ── Charts ─────────────────────────────────── */
+    .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .chart-card { padding: 1.4rem 1.5rem; }
+    .chart-title { font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+                   letter-spacing: 0.08em; color: var(--muted); margin-bottom: 1.1rem; }
+    .chart-wrap  { position: relative; height: 240px; }
+
+    /* ── Quotes ─────────────────────────────────── */
+    .quotes { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    .qcard  { padding: 1.4rem 1.5rem; }
+    .qcard-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .qcat   { font-size: 0.9rem; font-weight: 700; }
+    .qbadge { font-size: 0.67rem; font-weight: 600; padding: 0.2rem 0.65rem; border-radius: 20px; }
+    .qi     { padding: 0.85rem 1rem; background: #f8fafc; border-radius: 6px;
+              margin-bottom: 0.7rem; border-left: 3px solid; }
+    .qi:last-child { margin-bottom: 0; }
+    .qi-text { font-size: 0.79rem; color: #334155; line-height: 1.55; font-style: italic; }
+    .qi-meta { font-size: 0.67rem; color: var(--muted); margin-top: 0.4rem; }
+
+    /* ── Footer ─────────────────────────────────── */
+    .footer { text-align: center; padding: 1.75rem; color: var(--muted); font-size: 0.7rem;
+              border-top: 1px solid var(--border); margin-top: 2.5rem; line-height: 1.8; }
+
+    @media (max-width: 920px) {
+      .main { padding: 1rem; }
+      .overview, .charts, .quotes { grid-template-columns: 1fr; }
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .hcard { min-width: auto; }
+      .hdr-inner { flex-direction: column; align-items: flex-start; }
+      .hdr-meta { text-align: left; }
+    }
+    @media print {
+      body { background: #fff; }
+      .hdr, .hdr * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────────────────── -->
+<div class="hdr">
+  <div class="hdr-inner">
+    <div>
+      <div class="hdr-tag">Guest Sentiment Analysis &nbsp;·&nbsp; Confidential</div>
+      <h1>Moxy New Orleans</h1>
+      <div class="hdr-sub">1–3 Star Reviews &nbsp;·&nbsp; Mar 2025 – Mar 2026 &nbsp;·&nbsp; Google &amp; TripAdvisor</div>
+    </div>
+    <div class="hdr-meta">
+      <div>Report Date: <strong>March 11, 2026</strong></div>
+      <div>Place ID: <strong>ChIJdUCQ9gqmIIYR1WkMcx0WyUo</strong></div>
+      <div>Sources: <strong>Outscraper · TripAdvisor API · Claude AI</strong></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Main ────────────────────────────────────────────────────────── -->
+<div class="main">
+
+  <!-- Overview -->
+  <div class="sec">Performance Overview</div>
+  <div class="overview">
+
+    <!-- Health Score -->
+    <div class="card hcard">
+      <div>
+        <svg width="108" height="108" viewBox="0 0 100 100" style="display:block">
+          <circle cx="50" cy="50" r="40" fill="none" stroke="#e2e8f0" stroke-width="9"/>
+          <circle cx="50" cy="50" r="40" fill="none" stroke="#ea580c" stroke-width="9"
+            stroke-dasharray="125.67 251.33"
+            stroke-dashoffset="0"
+            transform="rotate(-90 50 50)"
+            stroke-linecap="round"/>
+          <text x="50" y="47" text-anchor="middle" dominant-baseline="middle"
+                font-size="22" font-weight="800" fill="#ea580c" font-family="system-ui,sans-serif">50</text>
+          <text x="50" y="64" text-anchor="middle"
+                font-size="8" fill="#94a3b8" font-family="system-ui,sans-serif">/ 100</text>
+        </svg>
+      </div>
+      <div class="hcard-detail">
+        <div class="hgrade">Needs Attention</div>
+        <div class="hsub">Reputation Health Score &nbsp;·&nbsp; Trend: <strong>stable</strong></div>
+        <div class="cmp">
+          <div class="cmp-row"><span>Volume impact</span><span>&minus;35 pts</span></div>
+          <div class="cmp-track"><div class="cmp-fill" style="width:100%;background:#ef4444"></div></div>
+        </div>
+        <div class="cmp">
+          <div class="cmp-row"><span>Severity impact</span><span>&minus;15 pts</span></div>
+          <div class="cmp-track"><div class="cmp-fill" style="width:75%;background:#f97316"></div></div>
+        </div>
+        <div class="cmp">
+          <div class="cmp-row"><span>Trend impact</span><span>&minus;0 pts</span></div>
+          <div class="cmp-track"><div class="cmp-fill" style="width:0%;background:#eab308"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI cards -->
+    <div class="kpi-grid">
+      <div class="card kpi" style="border-top:3px solid #dc2626">
+        <div class="kv" style="color:#dc2626">76</div>
+        <div class="kl">Total Negative Reviews</div>
+        <div class="ks">1–3 stars · past 12 months</div>
+      </div>
+      <div class="card kpi" style="border-top:3px solid var(--blue)">
+        <div class="kv" style="color:var(--blue)">71</div>
+        <div class="kl">Google Reviews</div>
+        <div class="ks">93% of total</div>
+      </div>
+      <div class="card kpi" style="border-top:3px solid var(--orange)">
+        <div class="kv" style="color:var(--orange)">5</div>
+        <div class="kl">TripAdvisor Reviews</div>
+        <div class="ks">7% of total</div>
+      </div>
+      <div class="card kpi" style="border-top:3px solid #7c3aed">
+        <div class="kv" style="color:#7c3aed;font-size:1.3rem">Service</div>
+        <div class="kl">Top Issue Category</div>
+        <div class="ks">24 reviews · 31.6%</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Platform breakdown -->
+  <div class="sec">Review Sources</div>
+  <div class="card">
+    <div class="plat-row">
+      <div class="plat-name">Google</div>
+      <div class="plat-bar"><div class="plat-fill" style="width:100%;background:var(--blue)"></div></div>
+      <div class="plat-count">71 reviews (93%)</div>
+    </div>
+    <div class="plat-row">
+      <div class="plat-name">TripAdvisor</div>
+      <div class="plat-bar"><div class="plat-fill" style="width:7%;background:var(--orange)"></div></div>
+      <div class="plat-count">5 reviews (7%)</div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="sec">Issue Analysis</div>
+  <div class="charts">
+    <div class="card chart-card">
+      <div class="chart-title">Negative Reviews by Category</div>
+      <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+    </div>
+    <div class="card chart-card">
+      <div class="chart-title">Monthly Trend — Negative Reviews</div>
+      <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Sample quotes -->
+  <div class="sec">Representative Guest Feedback by Category</div>
+  <div class="quotes">
+    
+    <div class="card qcard">
+      <div class="qcard-head">
+        <span class="qcat" style="color:#f97316">Service</span>
+        <span class="qbadge" style="background:#f9731618;color:#f97316">24 reviews&nbsp;·&nbsp;31.6%</span>
+      </div>
+      
+      <div class="qi" style="border-left-color:#f97316">
+        <div class="qi-text">"The name says Moxy by Marriott, but it’s more like Moxy by Temu.
+
+Unprofessional and extremely rude staff. Irresponsible and arrogant management. They will gaslight you, lie to your face, taunt you to file a complaint “because HR won’t do a…"</div>
+        <div class="qi-meta">
+          <span style="color:#f59e0b">★☆☆☆☆</span>
+          &nbsp;Anonymous&nbsp;·&nbsp;Google&nbsp;·&nbsp;2026-01-20
+        </div>
+      </div>
+      <div class="qi" style="border-left-color:#f97316">
+        <div class="qi-text">"Avoid – terrible after-service and unresolved incorrect charge||Our stay itself is completely overshadowed by what has happened afterwards. We stayed at Moxy Hotel New Orleans in October and checked out on 3/11. At checkout, we were clearly…"</div>
+        <div class="qi-meta">
+          <span style="color:#f59e0b">★☆☆☆☆</span>
+          &nbsp;Anonymous&nbsp;·&nbsp;Google&nbsp;·&nbsp;2026-01-20
+        </div>
+      </div>
+      <div class="qi" style="border-left-color:#f97316">
+        <div class="qi-text">"Everything was great but yall need a new over night front desk host! With one with the bandtu knots is very problematic and doesn’t solve no issues"</div>
+        <div class="qi-meta">
+          <span style="color:#f59e0b">★☆☆☆☆</span>
+          &nbsp;Anonymous&nbsp;·&nbsp;Google&nbsp;·&nbsp;2025-12-21
+        </div>
+      </div>
+    </div>
+    <div class="card qcard">
+      <div class="qcard-head">
+        <span class="qcat" style="color:#eab308">Maintenance</span>
+        <span class="qbadge" style="background:#eab30818;color:#eab308">20 reviews&nbsp;·&nbsp;26.3%</span>
+      </div>
+      
+      <div class="qi" style="border-left-color:#eab308">
+        <div class="qi-text">"As an elite member who travels frequently, this hotel is is the worse one I have stayed at. Only one elevator was working during our stay, and there was no ETA on when the other would be fixed. That meant waits of up to 30 minutes just to g…"</div>
+        <div class="qi-meta">
+          <span style="color:#f59e0b">★☆☆☆☆</span>
+          &nbsp;Anonymous&nbsp;·&nbsp;Google&nbsp;·&nbsp;2026-03-08
+        </div>
+      </div>
+      <div class="qi" style="border-left-color:#eab308">
+        <div class="qi-text">"If I could leave a negative star for this hotel, I would.  Do NOT stay here!!!  Do not believe the pictures you see online.   Rooms are run down, dirty, with broken window shades that won&#39;t go down, broken plug in outlets,  broken charger o…"</div>
+        <div class="qi-meta">
+          <span style="color:#f59e0b">★☆☆☆☆</span>
+          &nbsp;Anonymous&nbsp;·&nbsp;Google&nbsp;·&nbsp;2026-02-06
+        </div>
+      </div>
+      <div class="qi" style="border-left-color:#eab308">
+        <div class="qi-text">"The room my wife and I stayed in was extremely cold last night! I spoke with the front receptionist about the room condition and she told me she would let me speak with the manager.  The manager stated he was busy and could not speak with u…"</div>
+        <div class="qi-meta">
+          <span style="color:#f59e0b">★☆☆☆☆</span>
+          &nbsp;Anonymous&nbsp;·&nbsp;Google&nbsp;·&nbsp;2026-01-20
+        </div>
+      </div>
+    </div>
+    <div class="card qcard">
+      <div class="qcard-head">
+        <span class="qcat" style="color:#ef4444">Cleanliness</span>
+        <span class="qbadge" style="background:#ef444418;color:#ef4444">11 reviews&nbsp;·&nbsp;14.5%</span>
+      </div>
+      
+      <div class="qi" style="border-left-color:#ef4444">
+        <div class="qi-text">"If you love not having air and sweating all night. Stay here. The rooms aren&#39;t clean. They charge way too much. Parking is ridiculous. I love coming to New Orleans but I&#39;ll never ever stay at this trash hotel again."</div>
+        <div class="qi-meta">
+          <span style="color:#f59e0b">★☆☆☆☆</span>
+          &nbsp;Anonymous&nbsp;·&nbsp;Google&nbsp;·&nbsp;2026-02-20
+        </div>
+      </div>
+      <div class="qi" style="border-left-color:#ef4444">
+        <div class="qi-text">"Wasn&#39;t the luxury nor did it have the services that I&#39;m used to but the location was spot on for visiting the French Quarter. Seems to be favored by the younger crowd and they cleansiness could have been better"</div>
+        <div class="qi-meta">
+          <span style="color:#f59e0b">★★★☆☆</span>
+          &nbsp;Anonymous&nbsp;·&nbsp;Google&nbsp;·&nbsp;2026-01-27
+        </div>
+      </div>
+      <div class="qi" style="border-left-color:#ef4444">
+        <div class="qi-text">"My first moxy stay was in Boston MA, and it was absolutely fantastic!! Staff was amazing, rooms were super cool and clean, the whole atmosphere of the hotel was awesome, highly recommend. But the CLEANLINESS of this hotel is atrocious!! The…"</div>
+        <div class="qi-meta">
+          <span style="color:#f59e0b">★☆☆☆☆</span>
+          &nbsp;Anonymous&nbsp;·&nbsp;Google&nbsp;·&nbsp;2025-12-28
+        </div>
+      </div>
+    </div>
+    <div class="card qcard">
+      <div class="qcard-head">
+        <span class="qcat" style="color:#94a3b8">Other</span>
+        <span class="qbadge" style="background:#94a3b818;color:#94a3b8">11 reviews&nbsp;·&nbsp;14.5%</span>
+      </div>
+      
+      <div class="qi" style="border-left-color:#94a3b8">
+        <div class="qi-text">"Positive: Cool interactive lounge area Negative: I wrote a long letter to the hotel company already if interested I will send copy to you"</div>
+        <div class="qi-meta">
+          <span style="color:#f59e0b">★☆☆☆☆</span>
+          &nbsp;Anonymous&nbsp;·&nbsp;Google&nbsp;·&nbsp;2026-01-08
+        </div>
+      </div>
+      <div class="qi" style="border-left-color:#94a3b8">
+        <div class="qi-text">"No room in rooms noplace to put clothing"</div>
+        <div class="qi-meta">
+          <span style="color:#f59e0b">★★☆☆☆</span>
+          &nbsp;Anonymous&nbsp;·&nbsp;Google&nbsp;·&nbsp;2025-11-08
+        </div>
+      </div>
+      <div class="qi" style="border-left-color:#94a3b8">
+        <div class="qi-text">"This is a hostel not a hotel. No dresser, no in room refrigerator or microwave (they are located downstairs in the lobby), no telephone, and no desk. I stayed at this hotel as a part of a Sisterhood retreat and was appalled our trip leader …"</div>
+        <div class="qi-meta">
+          <span style="color:#f59e0b">★★★☆☆</span>
+          &nbsp;Anonymous&nbsp;·&nbsp;Google&nbsp;·&nbsp;2025-11-03
+        </div>
+      </div>
+    </div>
+    <div class="card qcard">
+      <div class="qcard-head">
+        <span class="qcat" style="color:#06b6d4">Noise</span>
+        <span class="qbadge" style="background:#06b6d418;color:#06b6d4">6 reviews&nbsp;·&nbsp;7.9%</span>
+      </div>
+      
+      <div class="qi" style="border-left-color:#06b6d4">
+        <div class="qi-text">"Terrible. Overpriced.
+Thinnest blankets ive ever seen. No coffee makers in the rooms. No refrigerator in the room. No rugs just sticky disgusting lament floors. Bartender is also the receptionist. Blinds are broken walls are thin ypu hear e…"</div>
+        <div class="qi-meta">
+          <span style="color:#f59e0b">★☆☆☆☆</span>
+          &nbsp;Anonymous&nbsp;·&nbsp;Google&nbsp;·&nbsp;2026-01-18
+        </div>
+      </div>
+      <div class="qi" style="border-left-color:#06b6d4">
+        <div class="qi-text">"I didn’t like this hotel because the rooms are small and staff is not as friendly as they should be. If you get second floor don’t stay close to elevators the laundry room is right across makes too much noise. No coffee maker in room , I di…"</div>
+        <div class="qi-meta">
+          <span style="color:#f59e0b">★☆☆☆☆</span>
+          &nbsp;Anonymous&nbsp;·&nbsp;Google&nbsp;·&nbsp;2025-12-29
+        </div>
+      </div>
+      <div class="qi" style="border-left-color:#06b6d4">
+        <div class="qi-text">"This hotel is in the most absolute terrible spot in New Orleans. The noise from the road outside is terrible. By chance the trash truck had a malfunction at 1am and it was an hour long ordeal with the operator screaming the entire time. Don…"</div>
+        <div class="qi-meta">
+          <span style="color:#f59e0b">★☆☆☆☆</span>
+          &nbsp;Anonymous&nbsp;·&nbsp;Google&nbsp;·&nbsp;2025-11-12
+        </div>
+      </div>
+    </div>
+    <div class="card qcard">
+      <div class="qcard-head">
+        <span class="qcat" style="color:#8b5cf6">Value</span>
+        <span class="qbadge" style="background:#8b5cf618;color:#8b5cf6">4 reviews&nbsp;·&nbsp;5.3%</span>
+      </div>
+      
+      <div class="qi" style="border-left-color:#8b5cf6">
+        <div class="qi-text">"I stayed here for Mardi Gras and it definitely was not worth the money. Room was poorly designed, lacked comfortable furniture, toilet did not function properly after maintenance came out, valet was overbooked, ran out of clean to towels, f…"</div>
+        <div class="qi-meta">
+          <span style="color:#f59e0b">★☆☆☆☆</span>
+          &nbsp;Anonymous&nbsp;·&nbsp;Google&nbsp;·&nbsp;2026-02-16
+        </div>
+      </div>
+      <div class="qi" style="border-left-color:#8b5cf6">
+        <div class="qi-text">"We stayed in October 2025 and was advised upon check out that we had nothing to pay , however they debited my Amex and despite emails advising they would look into this I’m still awaiting a response and refund"</div>
+        <div class="qi-meta">
+          <span style="color:#f59e0b">★☆☆☆☆</span>
+          &nbsp;Anonymous&nbsp;·&nbsp;Google&nbsp;·&nbsp;2026-01-08
+        </div>
+      </div>
+      <div class="qi" style="border-left-color:#8b5cf6">
+        <div class="qi-text">"Fraudulent “holding fee” charge on card. Impossible to get in contact with to dispute directly. Hotel quality is barely average at best. Do not stay here. SCAM."</div>
+        <div class="qi-meta">
+          <span style="color:#f59e0b">★☆☆☆☆</span>
+          &nbsp;Anonymous&nbsp;·&nbsp;Google&nbsp;·&nbsp;2025-12-22
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Footer ──────────────────────────────────────────────────────── -->
+<div class="footer">
+  Generated March 11, 2026&nbsp;·&nbsp;
+  Data sources: Outscraper API (Google Maps Reviews), TripAdvisor Content API, Puppeteer&nbsp;·&nbsp;
+  Analysis: Claude AI (claude-sonnet-4-20250514)<br>
+  This report contains publicly available guest review data. Intended for internal asset management use only.
+</div>
+
+<script>
+Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+Chart.defaults.font.size   = 12;
+Chart.defaults.color       = '#64748b';
+
+const BAR  = {"labels":["Service","Maintenance","Cleanliness","Other","Noise","Value"],"counts":[24,20,11,11,6,4],"colors":["#f97316","#eab308","#ef4444","#94a3b8","#06b6d4","#8b5cf6"]};
+const TREND = {"labels":["Apr 25","May 25","Jun 25","Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26"],"google":[6,9,4,4,7,2,5,9,7,8,3,1],"tripadvisor":[0,0,0,0,0,0,0,1,1,2,1,0],"total":[6,9,4,4,7,2,5,10,8,10,4,1]};
+
+// ── Bar chart (horizontal) ───────────────────────────────────────────
+new Chart(document.getElementById('barChart'), {
+  type: 'bar',
+  data: {
+    labels: BAR.labels,
+    datasets: [{
+      data:            BAR.counts,
+      backgroundColor: BAR.colors,
+      borderRadius:    5,
+      borderSkipped:   false,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.raw} review${ctx.raw !== 1 ? 's' : ''}` } }
+    },
+    scales: {
+      x: { grid: { color: '#f1f5f9' }, ticks: { precision: 0, stepSize: 1 } },
+      y: { grid: { display: false } }
+    }
+  }
+});
+
+// ── Trend line chart ─────────────────────────────────────────────────
+new Chart(document.getElementById('trendChart'), {
+  type: 'line',
+  data: {
+    labels: TREND.labels,
+    datasets: [
+      {
+        label:           'Google',
+        data:            TREND.google,
+        borderColor:     '#2563eb',
+        backgroundColor: 'rgba(37,99,235,0.07)',
+        borderWidth: 2, pointRadius: 3, pointHoverRadius: 5,
+        fill: true, tension: 0.35,
+      },
+      {
+        label:           'TripAdvisor',
+        data:            TREND.tripadvisor,
+        borderColor:     '#f97316',
+        backgroundColor: 'rgba(249,115,22,0.07)',
+        borderWidth: 2, pointRadius: 3, pointHoverRadius: 5,
+        fill: true, tension: 0.35,
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top',
+        labels: { boxWidth: 10, usePointStyle: true, pointStyle: 'circle', padding: 16 }
+      },
+      tooltip: { mode: 'index', intersect: false }
+    },
+    scales: {
+      x: { grid: { display: false } },
+      y: { grid: { color: '#f1f5f9' }, ticks: { precision: 0, stepSize: 1 }, min: 0 }
+    }
+  }
+});
+</script>
+</body>
+</html>
